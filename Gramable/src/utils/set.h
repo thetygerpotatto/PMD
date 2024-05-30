@@ -21,6 +21,8 @@ void set_append(set *Set, const char *c);
 
 void set_clear(set *Set);
 
-bool isInSet(set *Set, d_string str);
+bool isInSet(set *Set, d_string *str);
+
+int findInSet(set *set, d_string *str);
 
 #endif // !Set

@@ -9,7 +9,7 @@ void set_realloc(set *set) {
     size_t inicial_cap = set->capacity;
     set->capacity += 5 + 1;
 
-    if (inicial_cap == 0) set->symbols = (d_string *)malloc(sizeof(d_string)*set->capacity);
+    if (inicial_cap == 0) set->symbols = calloc(set->capacity, sizeof(d_string));
 
     else {
         d_string *syms = malloc(sizeof(d_string)*set->size);
@@ -32,7 +32,7 @@ void set_append(set *Set, const char *c) {
     d_string str = {0};
     d_string_append_s(&str, c);
 
-    if (isInSet(Set, str)) {
+    if (isInSet(Set, &str)) {
         return ;
     }
 
@@ -49,12 +49,20 @@ void set_clear(set *set) {
     set->capacity = 0;
 }
 
-bool isInSet(set *Set, d_string str) {
+bool isInSet(set *Set, d_string *str) {
     if (Set == NULL) return  false;
 
     if (Set->size == 0) return false;
     for (size_t i = 0; i != Set->size; ++i) {
-        if (strcmp(Set->symbols[i].chars, str.chars) == 0) return true;
+        if (strcmp(Set->symbols[i].chars, str->chars) == 0) return true;
     }
     return false;
+}
+
+int findInSet(set *set, d_string *str) {
+    if (!isInSet(set, str)) return -1;
+    for (size_t i = 0; i != set->size; ++i) {
+        if(strcmp(set->symbols[i].chars, str->chars) == 0) return i;
+    }
+    return -1;
 }

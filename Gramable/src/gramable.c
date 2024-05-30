@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include "ruleset.h"
 #include "utils/set.c"
 #include "utils/d_string.c"
 
@@ -8,6 +9,7 @@ void menu();
 void getAlphabet();
 void getTermSyms();
 void getInitialSym();
+void getRules();
 void showGramatic();
 void checkFrase();
 
@@ -16,6 +18,8 @@ bool isInSetc(set *Set, const char *c);
 static set Alphabet = {0};
 static set Term_symbols = {0};
 static set Inicial_symbol = {0};
+
+static ruleset Rules = {0};
 
 static d_string frase = {0};
 
@@ -35,8 +39,9 @@ void menu() {
         printf("1 - Para ingresar el vocabulario\n");
         printf("2 - Para ingresar los simbolos terminales\n");
         printf("3 - Para ingresar el simbolo inicial\n");
-        printf("4 - Para mostrar la gramaticaa actual\n");
-        printf("5 - Para probar una palabra\n");
+        printf("4 - Para ingresar las reglas\n");
+        printf("5 - Para mostrar la gramaticaa actual\n");
+        printf("6 - Para probar una palabra\n");
         printf("0 - Para salir\n");
         printf("--");
         
@@ -54,9 +59,12 @@ void menu() {
                 getInitialSym();
             break;
             case 4:
-                showGramatic();
+                getRules();
             break;
             case 5:
+                showGramatic();
+            break;
+            case 6:
                 checkFrase();
             break;
             case 0:
@@ -75,7 +83,7 @@ void checkFrase() {
     d_string_append_s(&frase, buffer);
     
     for (size_t i = 0; i != frase.size; ++i) {
-        if (!isInSet(&Alphabet, frase)) {
+        if (!isInSet(&Alphabet, &frase)) {
             printf("La frase contiene simbolos que no existen en el vocabulario V\n");
             return;
         }
@@ -154,6 +162,24 @@ void getInitialSym() {
         set_append(&Inicial_symbol, buffer);
         getchar();
         break;
+    }
+}
+
+void getRules() {
+    printf( "Ingrese su vocabulario\nIngrese un '-' para parar de ingresar caracteres:\n");
+    while (true) {
+        char buffer[80];
+        printf("- ");
+        scanf("%s", buffer);
+
+        if (strcmp(buffer, "-") == 0) {
+            if (Alphabet.size == 0) continue;
+            getchar();
+            break;
+        } else {
+            set_append(&Alphabet, buffer);
+            getchar();
+        }
     }
 }
 
