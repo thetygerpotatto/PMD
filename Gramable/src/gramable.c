@@ -14,6 +14,8 @@ void showGramatic();
 void checkFrase();
 
 bool isInSetc(set *Set, const char *c);
+bool isComformedByVoc(set *Set, d_string *str);
+bool isNotOnlyTerminal(set *TSet, set *Voc, d_string *str);
 
 static set Alphabet = {0};
 static set Term_symbols = {0};
@@ -80,6 +82,7 @@ void checkFrase() {
     printf("Ingrese la palabra que desea comprobar: ");
     scanf("%s", buffer);
     getchar();
+
     d_string_append_s(&frase, buffer);
     
     for (size_t i = 0; i != frase.size; ++i) {
@@ -88,6 +91,8 @@ void checkFrase() {
             return;
         }
     }
+
+    
 
 }
 
@@ -181,8 +186,10 @@ void getRules() {
         d_string strL = {0};
         d_string_append_s(&strL, bufferL);
         
-        if (isInSet(&Term_symbols, &strL) || !isInSet(&Alphabet, &strL)) {
-            printf("El simbolo del lado derecho debe estar en el vocabulario y no puede ser un simbolo terminal\n");
+        printf("isNotOnlyTerminal :%d\n", isNotOnlyTerminal(&Term_symbols, &Alphabet, &strL));
+        printf("isComformedByVoc :%d\n", isComformedByVoc(&Alphabet, &strL));
+        if (!isNotOnlyTerminal(&Term_symbols, &Alphabet, &strL) || !isComformedByVoc(&Alphabet, &strL)) {
+            printf("El simbolo del lado izquierdo debe estar en el vocabulario y no puede ser un simbolo terminal\n");
             getchar();
             continue;
         }
@@ -190,7 +197,7 @@ void getRules() {
         printf("%s -> ", bufferL);
         scanf("%s", bufferR);
 
-        if (!isInSet(&Alphabet, &strL)) {
+        if (!isComformedByVoc(&Alphabet, &strL)) {
             printf("El simbolo del lado derecho debe estar en el vocabulario\n");
             getchar();
             continue;
@@ -215,18 +222,51 @@ void showGramatic() {
         if (i != Term_symbols.size-1) printf("%s, ", Term_symbols.symbols[i].chars);
         else if (i == Term_symbols.size-1 ) printf("%s}\t", Term_symbols.symbols[i].chars);
     }
+
+    if (Inicial_symbol.size != 0) printf("Simbolo inicial: %s\n", Inicial_symbol.symbols->chars);
+
     for (size_t i = 0; i != Rules.size; ++i) {
         if (i == 0) printf("P = {");
         if (i != Rules.size-1) printf("%s -> %s, ", Rules.rules[i].L.chars, Rules.rules[i].R.chars);
-        else if (i == Rules.size-1 ) printf("%s -> %s}\t", Rules.rules[i].L.chars, Rules.rules[i].R.chars);
+        else if (i == Rules.size-1 ) printf("%s -> %s}\n", Rules.rules[i].L.chars, Rules.rules[i].R.chars);
     }
-
-    if (Inicial_symbol.size != 0) printf("Simbolo inicial: %s\n", Inicial_symbol.symbols->chars);
 }
 
 bool isInSetc(set *Set, const char *c) {
     for (size_t i = 0; i != Set->size; ++i) {
         if (strcmp(Set->symbols[i].chars, c) == 0) return true;
     }
+    return false;
+}
+
+bool isComformedByVoc(set *VSet, d_string *str) {
+    if (VSet == NULL) return  false;
+
+    if (VSet->size == 0) return false;
+    for (size_t str_Index = 0; str_Index != str->size; ++str_Index) {
+        bool isInVoc = false;
+        for (size_t Vsym_index = 0; Vsym_index != VSet->size; ++Vsym_index) {
+            if (str->chars[str_Index] == *VSet->symbols[Vsym_index].chars) isInVoc = true;
+        }
+        if (!isInVoc) return false;
+    }
+    return true;
+}
+
+bool isNotOnlyTerminal(set *TSet, set *Voc, d_string *str) {
+    if (TSet == NULL) return  false;
+    
+    for (size_t str_Index = 0; str_Index != str->size; ++str_Index) {
+        for (size_t Vsym_index = 0; Vsym_index != Voc->size; ++Vsym_index) {
+            for (size_t Tsym_index = 0; Tsym_index != TSet->size; ++Tsym_index) {
+                if (str->chars[str_Index] == *Voc->symbols[Vsym_index].chars &&
+                    str->chars[str_Index] != *TSet->symbols[Tsym_index].chars) return true;
+            }
+
+        }
+
+    }
+
+
     return false;
 }
