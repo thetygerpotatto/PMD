@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
-#include "ruleset.h"
-#include "utils/set.c"
+#include "ruleset.c"
 #include "utils/d_string.c"
+#include "utils/set.c"
 
 void menu();
 void getAlphabet();
@@ -166,20 +166,41 @@ void getInitialSym() {
 }
 
 void getRules() {
-    printf( "Ingrese su vocabulario\nIngrese un '-' para parar de ingresar caracteres:\n");
+    printf( "Ingrese sus reglas P en pares \nIngrese un '-' para parar de ingresar caracteres:\n");
     while (true) {
-        char buffer[80];
+        char bufferL[80];
+        char bufferR[80];
         printf("- ");
-        scanf("%s", buffer);
+        scanf("%s", bufferL);
 
-        if (strcmp(buffer, "-") == 0) {
+        if (strcmp(bufferL, "-") == 0) {
             if (Alphabet.size == 0) continue;
             getchar();
             break;
-        } else {
-            set_append(&Alphabet, buffer);
+        } 
+        d_string strL = {0};
+        d_string_append_s(&strL, bufferL);
+        
+        if (isInSet(&Term_symbols, &strL) || !isInSet(&Alphabet, &strL)) {
+            printf("El simbolo del lado derecho debe estar en el vocabulario y no puede ser un simbolo terminal\n");
             getchar();
+            continue;
         }
+
+        printf("%s -> ", bufferL);
+        scanf("%s", bufferR);
+
+        if (!isInSet(&Alphabet, &strL)) {
+            printf("El simbolo del lado derecho debe estar en el vocabulario\n");
+            getchar();
+            continue;
+        }
+
+        d_string strR = {0};
+        d_string_append_s(&strR, bufferR);
+
+        rule newrule = {.R = strR, .L = strL};
+        add_rule(&Rules, newrule);
     }
 }
 
@@ -193,6 +214,11 @@ void showGramatic() {
         if (i == 0) printf("T = {");
         if (i != Term_symbols.size-1) printf("%s, ", Term_symbols.symbols[i].chars);
         else if (i == Term_symbols.size-1 ) printf("%s}\t", Term_symbols.symbols[i].chars);
+    }
+    for (size_t i = 0; i != Rules.size; ++i) {
+        if (i == 0) printf("P = {");
+        if (i != Rules.size-1) printf("%s -> %s, ", Rules.rules[i].L.chars, Rules.rules[i].R.chars);
+        else if (i == Rules.size-1 ) printf("%s -> %s}\t", Rules.rules[i].L.chars, Rules.rules[i].R.chars);
     }
 
     if (Inicial_symbol.size != 0) printf("Simbolo inicial: %s\n", Inicial_symbol.symbols->chars);

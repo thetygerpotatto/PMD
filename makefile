@@ -1,3 +1,3 @@
 run:
-	gcc -g -Wall program1/src/gramable.c  -o program1/bin/gramable
-	program1/bin/gramable
+	gcc -g -Wall Gramable/src/gramable.c  -o Gramable/bin/gramable
+	Gramable/bin/gramable

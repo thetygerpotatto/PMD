@@ -5,8 +5,8 @@
 #include <stdbool.h>
 
 typedef struct {
-    d_string *R;
-    d_string *L;
+    d_string R;
+    d_string L;
 } rule;
 
 typedef struct {
