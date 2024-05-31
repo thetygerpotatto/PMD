@@ -2,7 +2,9 @@
 #include <stdbool.h>
 #include <string.h>
 #include "ruleset.c"
+#include "ruleset.h"
 #include "utils/d_string.c"
+#include "utils/d_string.h"
 #include "utils/set.c"
 
 void menu();
@@ -12,14 +14,18 @@ void getInitialSym();
 void getRules();
 void showGramatic();
 void checkFrase();
+void generateLanguage();
 
 bool isInSetc(set *Set, const char *c);
 bool isComformedByVoc(set *Set, d_string *str);
-bool isNotOnlyTerminal(set *TSet, set *Voc, d_string *str);
+bool isOnlyTerminal(set *TSet, d_string *str);
+char * analize_word(char * word, set *Language, size_t depth);
+char * lookForRecursion(rule * r);
 
 static set Alphabet = {0};
 static set Term_symbols = {0};
 static set Inicial_symbol = {0};
+static set GeneratedLanguage = {0};
 
 static ruleset Rules = {0};
 
@@ -42,8 +48,8 @@ void menu() {
         printf("2 - Para ingresar los simbolos terminales\n");
         printf("3 - Para ingresar el simbolo inicial\n");
         printf("4 - Para ingresar las reglas\n");
-        printf("5 - Para mostrar la gramaticaa actual\n");
-        printf("6 - Para probar una palabra\n");
+        printf("5 - Para probar una palabra\n");
+        printf("6 - Para generar el lenguaje\n");
         printf("0 - Para salir\n");
         printf("--");
         
@@ -64,10 +70,10 @@ void menu() {
                 getRules();
             break;
             case 5:
-                showGramatic();
+                checkFrase();
             break;
             case 6:
-                checkFrase();
+                generateLanguage();
             break;
             case 0:
                 loop = true;
@@ -86,14 +92,74 @@ void checkFrase() {
     d_string_append_s(&frase, buffer);
     
     for (size_t i = 0; i != frase.size; ++i) {
-        if (!isInSet(&Alphabet, &frase)) {
+        if (!isComformedByVoc(&Alphabet, &frase)) {
             printf("La frase contiene simbolos que no existen en el vocabulario V\n");
             return;
         }
     }
 
-    
 
+}
+
+
+void generateLanguage() {
+    set generated_words = {0};
+    d_string starting_sym = {0};
+
+    d_string_append_s(&starting_sym, Inicial_symbol.symbols->chars);
+    
+    analize_word(starting_sym.chars, &GeneratedLanguage, 0);
+    printf("Palabras generadas por la gramatica: \n");
+    for (size_t i = 0; i < GeneratedLanguage.size; ++i) {
+        printf("%lu - %s", i, GeneratedLanguage.symbols[i].chars);
+        if (d_string_isIn_s(&GeneratedLanguage.symbols[i], "(")) {
+            printf(" Para cualquier S de P que no se contenga a si misma\n");
+        } else printf("\n");
+    }
+    getchar();
+}
+
+char * analize_word(char * word, set *Language, size_t depth) {
+    depth++;
+    d_string starting_sym = {0};
+    d_string temp = {0};
+    d_string_append_s(&starting_sym, word);
+    
+    for (size_t rule_Index = 0; rule_Index != Rules.size; ++rule_Index) {
+        for (size_t str_Index = 0; str_Index != starting_sym.size; ++str_Index) {
+            char str_ = starting_sym.chars[str_Index];
+            char rule_ = *Rules.rules[rule_Index].L.chars;
+            if (strncmp(&starting_sym.chars[str_Index], Rules.rules[rule_Index].L.chars, Rules.rules[rule_Index].L.size) == 0) {
+
+                d_string_set_s(&temp, starting_sym.chars);
+
+                d_string_delete_s(&temp, str_Index, Rules.rules[rule_Index].L.chars);
+                d_string_insert_s(&temp, str_Index, Rules.rules[rule_Index].R.chars);
+                
+                d_string recursionRule = {0};
+                d_string_append_s(&recursionRule, lookForRecursion(&Rules.rules[rule_Index]));
+
+                bool hasRecursion = (recursionRule.chars == NULL) ? false : true;
+                
+                if (!isOnlyTerminal(&Term_symbols, &temp) && depth && !hasRecursion) {
+                    analize_word(temp.chars, Language, depth);
+                } 
+                else if(depth > 1000) {
+                    printf("Limite de recursion alcanzado%lu\n", depth);
+                }
+                else if(hasRecursion) {
+                    set_append(&GeneratedLanguage, recursionRule.chars);
+                }
+                else {
+                    set_append(&GeneratedLanguage, temp.chars);
+                }
+            }
+            
+        }
+    }
+
+
+    return temp.chars;
 }
 
 void getAlphabet() {
@@ -183,12 +249,13 @@ void getRules() {
             getchar();
             break;
         } 
+
         d_string strL = {0};
         d_string_append_s(&strL, bufferL);
         
-        printf("isNotOnlyTerminal :%d\n", isNotOnlyTerminal(&Term_symbols, &Alphabet, &strL));
+        printf("isOnlyTerminal :%d\n", isOnlyTerminal(&Term_symbols, &strL));
         printf("isComformedByVoc :%d\n", isComformedByVoc(&Alphabet, &strL));
-        if (!isNotOnlyTerminal(&Term_symbols, &Alphabet, &strL) || !isComformedByVoc(&Alphabet, &strL)) {
+        if (isOnlyTerminal(&Term_symbols, &strL) || !isComformedByVoc(&Alphabet, &strL)) {
             printf("El simbolo del lado izquierdo debe estar en el vocabulario y no puede ser un simbolo terminal\n");
             getchar();
             continue;
@@ -197,14 +264,21 @@ void getRules() {
         printf("%s -> ", bufferL);
         scanf("%s", bufferR);
 
-        if (!isComformedByVoc(&Alphabet, &strL)) {
+        if (strcmp(bufferL, "-") == 0) {
+            if (Alphabet.size == 0) continue;
+            getchar();
+            break;
+        } 
+
+        d_string strR = {0};
+        d_string_append_s(&strR, bufferR);
+        
+        if (!isComformedByVoc(&Alphabet, &strR)) {
             printf("El simbolo del lado derecho debe estar en el vocabulario\n");
             getchar();
             continue;
         }
 
-        d_string strR = {0};
-        d_string_append_s(&strR, bufferR);
 
         rule newrule = {.R = strR, .L = strL};
         add_rule(&Rules, newrule);
@@ -253,20 +327,52 @@ bool isComformedByVoc(set *VSet, d_string *str) {
     return true;
 }
 
-bool isNotOnlyTerminal(set *TSet, set *Voc, d_string *str) {
+bool isOnlyTerminal(set *TSet, d_string *str) {
     if (TSet == NULL) return  false;
     
     for (size_t str_Index = 0; str_Index != str->size; ++str_Index) {
-        for (size_t Vsym_index = 0; Vsym_index != Voc->size; ++Vsym_index) {
-            for (size_t Tsym_index = 0; Tsym_index != TSet->size; ++Tsym_index) {
-                if (str->chars[str_Index] == *Voc->symbols[Vsym_index].chars &&
-                    str->chars[str_Index] != *TSet->symbols[Tsym_index].chars) return true;
-            }
+        bool onlyTerminal = false;
 
+        for (size_t Tsym_index = 0; Tsym_index != TSet->size; ++Tsym_index) {
+            if (str->chars[str_Index] == *TSet->symbols[Tsym_index].chars) {
+                onlyTerminal = true;
+            }
         }
 
+        if (!onlyTerminal) return false;
     }
 
+    return true;
+}
 
-    return false;
+char * lookForRecursion(rule * r) {
+    d_string lg = {0};
+
+    if (d_string_isIn_s(&r->R, r->L.chars)) {
+        if (strncmp(r->L.chars, r->R.chars, r->L.size) == 0) {
+            d_string_append_s(&lg, r->L.chars);
+            d_string_append_s(&lg, "(");
+            d_string_append_s(&lg, &r->R.chars[r->L.size]);
+            d_string_append_s(&lg, ")*");
+        } 
+        else if (strncmp(r->L.chars, &r->R.chars[r->R.size - r->L.size], r->L.size) == 0) {
+            d_string_append_s(&lg, "(");
+            d_string_append_s(&lg, r->R.chars);
+            d_string_delete_s(&lg, lg.size-r->L.size, r->L.chars);
+            d_string_append_s(&lg, ")*");
+            d_string_append_s(&lg, r->L.chars) ;
+        } 
+        else {
+            size_t L_index = d_string_find_s(&r->R, r->L.chars);
+            d_string_append_s(&lg, "(");
+            d_string_concat_s(&lg, r->R.chars, L_index);
+            d_string_append_s(&lg, ")*");
+            d_string_append_s(&lg, r->L.chars);
+            d_string_append_s(&lg, "(");
+            d_string_concat_s(&lg, &r->R.chars[L_index+1], L_index);
+            d_string_append_s(&lg, ")*");
+        }
+        return lg.chars;
+    }
+    return NULL;
 }
