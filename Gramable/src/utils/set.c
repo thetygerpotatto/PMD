@@ -41,6 +41,7 @@ void set_append(set *Set, const char *c) {
 
 
 void set_clear(set *set) {
+    if (set->symbols == NULL) return;
     for (size_t i = 0; i != set->size ; ++i) {
         free(set->symbols[i].chars);
     }

@@ -15,17 +15,19 @@ void getRules();
 void showGramatic();
 void checkFrase();
 void generateLanguage();
+void editingMenu();
 
 bool isInSetc(set *Set, const char *c);
 bool isComformedByVoc(set *Set, d_string *str);
 bool isOnlyTerminal(set *TSet, d_string *str);
-char * analize_word(char * word, set *Language, size_t depth);
+char * derive_frase(char * word, set *Language, size_t depth);
+bool analize_frase(char * frase);
 char * lookForRecursion(rule * r);
 
 static set Alphabet = {0};
 static set Term_symbols = {0};
 static set Inicial_symbol = {0};
-static set GeneratedLanguage = {0};
+static set Generated_language = {0};
 
 static ruleset Rules = {0};
 
@@ -50,6 +52,7 @@ void menu() {
         printf("4 - Para ingresar las reglas\n");
         printf("5 - Para probar una palabra\n");
         printf("6 - Para generar el lenguaje\n");
+        printf("7 - Para generar el lenguaje\n");
         printf("0 - Para salir\n");
         printf("--");
         
@@ -75,12 +78,61 @@ void menu() {
             case 6:
                 generateLanguage();
             break;
+            case 7:
+                editingMenu();
+            break;
             case 0:
                 loop = true;
             break;
         }
     }
 }
+
+void editingMenu() {
+    bool loop = false;
+    while (!loop) {
+        int op = -1;
+        showGramatic();
+        printf("\n      menu de edicion\n\n");
+        printf("1 - Para editar el vocabulario\n");
+        printf("2 - Para editar los simbolos terminales\n");
+        printf("3 - Para editar el simbolo inicial\n");
+        printf("4 - Para editar las reglas\n");
+        printf("0 - Para salir\n");
+        printf("--");
+        
+        scanf("%d", &op);
+        getchar();
+
+        switch (op) {
+            case 1:
+                getAlphabet();
+            break;
+            case 2:
+                getTermSyms();
+            break;
+            case 3:
+                getInitialSym();
+            break;
+            case 4:
+                getRules();
+            break;
+            case 5:
+                checkFrase();
+            break;
+            case 6:
+                generateLanguage();
+            break;
+            case 7:
+                editingMenu();
+            break;
+            case 0:
+                loop = true;
+            break;
+        }
+    }
+}
+
 
 void checkFrase() {
     d_string_clear(&frase);
@@ -91,39 +143,46 @@ void checkFrase() {
 
     d_string_append_s(&frase, buffer);
     
-    for (size_t i = 0; i != frase.size; ++i) {
-        if (!isComformedByVoc(&Alphabet, &frase)) {
-            printf("La frase contiene simbolos que no existen en el vocabulario V\n");
-            return;
-        }
+    if (!isComformedByVoc(&Alphabet, &frase)) {
+        printf("La frase contiene simbolos que no existen en el vocabulario V\n");
+        return;
+    }
+    if (!isOnlyTerminal(&Term_symbols, &frase)) {
+        printf("La frase contiene simbolos no terminales\n");
+        return;
     }
 
-
+    if (analize_frase(frase.chars)) {
+        printf("%s es una frase de generada por G\n", frase.chars);
+    } else {
+        printf("%s no es una frase de generada por G\n", frase.chars);
+    }
 }
 
 
 void generateLanguage() {
-    set generated_words = {0};
+    if (Rules.rules == NULL) return;
     d_string starting_sym = {0};
 
     d_string_append_s(&starting_sym, Inicial_symbol.symbols->chars);
     
-    analize_word(starting_sym.chars, &GeneratedLanguage, 0);
+    derive_frase(starting_sym.chars, &Generated_language, 0);
     printf("Palabras generadas por la gramatica: \n");
-    for (size_t i = 0; i < GeneratedLanguage.size; ++i) {
-        printf("%lu - %s", i, GeneratedLanguage.symbols[i].chars);
-        if (d_string_isIn_s(&GeneratedLanguage.symbols[i], "(")) {
+    for (size_t i = 0; i < Generated_language.size; ++i) {
+        printf("%lu - %s", i+1, Generated_language.symbols[i].chars);
+        if (d_string_isIn_s(&Generated_language.symbols[i], "(")) {
             printf(" Para cualquier S de P que no se contenga a si misma\n");
         } else printf("\n");
     }
     getchar();
 }
 
-char * analize_word(char * word, set *Language, size_t depth) {
+char * derive_frase(char * word, set *Language, size_t depth) {
     depth++;
     d_string starting_sym = {0};
     d_string temp = {0};
     d_string_append_s(&starting_sym, word);
+
     
     for (size_t rule_Index = 0; rule_Index != Rules.size; ++rule_Index) {
         for (size_t str_Index = 0; str_Index != starting_sym.size; ++str_Index) {
@@ -142,16 +201,16 @@ char * analize_word(char * word, set *Language, size_t depth) {
                 bool hasRecursion = (recursionRule.chars == NULL) ? false : true;
                 
                 if (!isOnlyTerminal(&Term_symbols, &temp) && depth && !hasRecursion) {
-                    analize_word(temp.chars, Language, depth);
+                    derive_frase(temp.chars, Language, depth);
                 } 
                 else if(depth > 1000) {
                     printf("Limite de recursion alcanzado%lu\n", depth);
                 }
                 else if(hasRecursion) {
-                    set_append(&GeneratedLanguage, recursionRule.chars);
+                    set_append(&Generated_language, recursionRule.chars);
                 }
                 else {
-                    set_append(&GeneratedLanguage, temp.chars);
+                    set_append(&Generated_language, temp.chars);
                 }
             }
             
@@ -160,6 +219,39 @@ char * analize_word(char * word, set *Language, size_t depth) {
 
 
     return temp.chars;
+}
+
+bool analize_frase(char * frase) {
+    d_string inicial_frase = {0};
+    d_string temp = {0};
+    d_string_append_s(&inicial_frase, frase);
+    bool isIn = false;
+
+    
+    for (size_t rule_Index = 0; rule_Index != Rules.size; ++rule_Index) {
+        for (size_t str_Index = 0; str_Index != inicial_frase.size; ++str_Index) {
+            char str_ = inicial_frase.chars[str_Index];
+            char rule_ = *Rules.rules[rule_Index].R.chars;
+            if (strncmp(&inicial_frase.chars[str_Index], Rules.rules[rule_Index].R.chars, Rules.rules[rule_Index].R.size) == 0) {
+
+                d_string_set_s(&temp, inicial_frase.chars);
+
+                d_string_delete_s(&temp, str_Index, Rules.rules[rule_Index].R.chars);
+                d_string_insert_s(&temp, str_Index, Rules.rules[rule_Index].L.chars);
+                
+
+                if (!d_string_isIn_s(&temp, Inicial_symbol.symbols->chars) || temp.size > 1) {
+                    bool istemp = analize_frase(temp.chars);
+                    if (!isIn) isIn = istemp;
+                } else {
+                    isIn = true;
+                }
+            }
+        }
+    }
+
+
+    return isIn;
 }
 
 void getAlphabet() {
@@ -180,7 +272,23 @@ void getAlphabet() {
     }
 }
 
+void editAlphabet() {
+    bool loop = true;
+    int index = -1;
+    while (!loop) {
+        printf("Vocabulario:\n");
+        for (size_t i = 0; i != Alphabet.size; ++i) {
+            printf("%lu - %s\n", i+1, Alphabet.symbols[i].chars);
+        }
+        printf("Seleccione el indice del simbolo que desea editar: ");
+        scanf("%d", &index);
+        getchar();
+
+    }
+}
+
 void getTermSyms() {
+    if (Alphabet.symbols == NULL) return;
     printf( "Ingrese sus Symbolos terminales\nIngrese un '-' para parar de ingresar caracteres:\n");
     while (true) {
         char buffer[80];
@@ -208,6 +316,8 @@ void getTermSyms() {
 }
 
 void getInitialSym() {
+    if (Alphabet.symbols == NULL) return;
+    set_clear(&Inicial_symbol);
     printf( "Ingrese el simbolo inicial:");
     while(true) {
         printf("- ");
@@ -237,6 +347,7 @@ void getInitialSym() {
 }
 
 void getRules() {
+    if (Alphabet.symbols == NULL) return;
     printf( "Ingrese sus reglas P en pares \nIngrese un '-' para parar de ingresar caracteres:\n");
     while (true) {
         char bufferL[80];
@@ -253,8 +364,8 @@ void getRules() {
         d_string strL = {0};
         d_string_append_s(&strL, bufferL);
         
-        printf("isOnlyTerminal :%d\n", isOnlyTerminal(&Term_symbols, &strL));
-        printf("isComformedByVoc :%d\n", isComformedByVoc(&Alphabet, &strL));
+        //printf("isOnlyTerminal :%d\n", isOnlyTerminal(&Term_symbols, &strL));
+        //printf("isComformedByVoc :%d\n", isComformedByVoc(&Alphabet, &strL));
         if (isOnlyTerminal(&Term_symbols, &strL) || !isComformedByVoc(&Alphabet, &strL)) {
             printf("El simbolo del lado izquierdo debe estar en el vocabulario y no puede ser un simbolo terminal\n");
             getchar();
