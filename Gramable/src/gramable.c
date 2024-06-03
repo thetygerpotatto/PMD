@@ -8,7 +8,7 @@
 #include "utils/set.c"
 
 #define RECURSION_LIMIT 1000
-#define BRANCH_LIMIT 10000
+#define BRANCH_LIMIT 100000
 
 void menu();
 void getAlphabet();
@@ -173,14 +173,15 @@ void generateLanguage() {
     
     derive_frase(starting_sym.chars, &Generated_language, 0);
     printf("10 Palabras generadas por la gramatica: \n");
-    for (size_t i = 0; i < (Generated_language.size >= 10) ? 10 : Generated_language.size; ++i) {
+    size_t limit = (Generated_language.size >= 10) ? 10 : Generated_language.size;
+    for (size_t i = 0; i < limit; ++i) {
         printf("%lu - %s", i+1, Generated_language.symbols[i].chars);
         if (d_string_isIn_s(&Generated_language.symbols[i], "(")) {
 
             printf("--> el simbolo no terminal fuera de parentesis sera remplazado por cualquier regla que no lo contenga en su lado derecho\n");
         } else printf("\n");
     }
-    if (Generated_language.size > 10) printf("No existen mas frases dentro de la gramatica\n");
+    if (Generated_language.size < 10) printf("No existen mas frases dentro de la gramatica\n");
     if (recursion_limit_reached) {
         recursion_limit_reached = false;
         printf("El limite de rercurcion fue alcanzado - Limite de recurcion: %d \nAsegurece de que su Gramatica no contenga un bucle\n",RECURSION_LIMIT);
@@ -300,7 +301,7 @@ void editAlphabet() {
     while (loop) {
         printf("Vocabulario:\n");
         for (size_t i = 0; i != Alphabet.size; ++i) {
-            printf("%lu - %s\n", i+1, Alphabet.symbols[i].chars);
+            printf("%llu - %s\n", i+1, Alphabet.symbols[i].chars);
         }
         printf("Seleccione el indice del simbolo que desea eliminar (0 para cancelar): ");
         scanf("%d", &index);
@@ -337,7 +338,7 @@ void editTerminalSymbols() {
     while (loop) {
         printf("Simbolos terminales:\n");
         for (size_t i = 0; i != Term_symbols.size; ++i) {
-            printf("%lu - %s\n", i+1, Term_symbols.symbols[i].chars);
+            printf("%llu - %s\n", i+1, Term_symbols.symbols[i].chars);
         }
         printf("Seleccione el indice del simbolo que desea eliminar (0 para cancelar): ");
         scanf("%d", &index);
