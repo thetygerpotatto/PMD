@@ -175,7 +175,7 @@ void generateLanguage() {
     printf("10 Palabras generadas por la gramatica: \n");
     size_t limit = (Generated_language.size >= 10) ? 10 : Generated_language.size;
     for (size_t i = 0; i < limit; ++i) {
-        printf("%lu - %s", i+1, Generated_language.symbols[i].chars);
+        printf("%llu - %s", i+1, Generated_language.symbols[i].chars);
         if (d_string_isIn_s(&Generated_language.symbols[i], "(")) {
 
             printf("--> el simbolo no terminal fuera de parentesis sera remplazado por cualquier regla que no lo contenga en su lado derecho\n");
@@ -203,8 +203,8 @@ char * derive_frase(char * word, set *Language, size_t depth) {
     
     for (size_t rule_Index = 0; rule_Index != Rules.size; ++rule_Index) {
         for (size_t str_Index = 0; str_Index != starting_sym.size; ++str_Index) {
-            char str_ = starting_sym.chars[str_Index];
-            char rule_ = *Rules.rules[rule_Index].L.chars;
+            //char str_ = starting_sym.chars[str_Index];
+            //char rule_ = *Rules.rules[rule_Index].L.chars;
             if (strncmp(&starting_sym.chars[str_Index], Rules.rules[rule_Index].L.chars, Rules.rules[rule_Index].L.size) == 0) {
 
                 d_string_set_s(&temp, starting_sym.chars);
@@ -252,8 +252,8 @@ bool analize_frase(char * frase) {
     
     for (size_t rule_Index = 0; rule_Index != Rules.size; ++rule_Index) {
         for (size_t str_Index = 0; str_Index != inicial_frase.size; ++str_Index) {
-            char str_ = inicial_frase.chars[str_Index];
-            char rule_ = *Rules.rules[rule_Index].R.chars;
+            // char str_ = inicial_frase.chars[str_Index];
+            // char rule_ = *Rules.rules[rule_Index].R.chars;
             if (strncmp(&inicial_frase.chars[str_Index], Rules.rules[rule_Index].R.chars, Rules.rules[rule_Index].R.size) == 0) {
 
                 d_string_set_s(&temp, inicial_frase.chars);
@@ -426,7 +426,6 @@ void getInitialSym() {
 void editInicialSymbol() {
     bool loop = true;
     char index = 0;
-    d_string deleted = {0};
     while (loop) {
         printf("Simbolo inical:%s\n", Inicial_symbol.symbols->chars);
         printf("Ingrese 0 para cancelar, cualquier otra tecla para continuar");
@@ -504,7 +503,7 @@ void editRules() {
     while (loop) {
         printf("Reglas de produccion\n");
         for (size_t i = 0; i != Rules.size; ++i) {
-            printf("%lu - %s -> %s\n", i+1, Rules.rules[i].L.chars, Rules.rules[i].R.chars);
+            printf("%llu - %s -> %s\n", i+1, Rules.rules[i].L.chars, Rules.rules[i].R.chars);
         }
         printf("Seleccione el indice de la regla que desea eliminar (0 para cancelar): ");
         scanf("%d", &index);
