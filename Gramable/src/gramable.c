@@ -147,17 +147,19 @@ void checkFrase() {
     
     if (!isComformedByVoc(&Alphabet, &frase)) {
         printf("La frase contiene simbolos que no existen en el vocabulario V\n");
+        getchar();
         return;
     }
     if (!isOnlyTerminal(&Term_symbols, &frase)) {
         printf("La frase contiene simbolos no terminales\n");
+        getchar();
         return;
     }
 
     if (analize_frase(frase.chars)) {
-        printf("%s es una frase de generada por G\n", frase.chars);
+        printf("%s es una frase generada por G\n", frase.chars);
     } else {
-        printf("%s no es una frase de generada por G\n", frase.chars);
+        printf("%s no es una frase generada por G\n", frase.chars);
     }
     getchar();
 }
@@ -170,14 +172,15 @@ void generateLanguage() {
     d_string_append_s(&starting_sym, Inicial_symbol.symbols->chars);
     
     derive_frase(starting_sym.chars, &Generated_language, 0);
-    printf("Palabras generadas por la gramatica: \n");
-    for (size_t i = 0; i < Generated_language.size; ++i) {
+    printf("10 Palabras generadas por la gramatica: \n");
+    for (size_t i = 0; i < (Generated_language.size >= 10) ? 10 : Generated_language.size; ++i) {
         printf("%lu - %s", i+1, Generated_language.symbols[i].chars);
         if (d_string_isIn_s(&Generated_language.symbols[i], "(")) {
 
             printf("--> el simbolo no terminal fuera de parentesis sera remplazado por cualquier regla que no lo contenga en su lado derecho\n");
         } else printf("\n");
     }
+    if (Generated_language.size > 10) printf("No existen mas frases dentro de la gramatica\n");
     if (recursion_limit_reached) {
         recursion_limit_reached = false;
         printf("El limite de rercurcion fue alcanzado - Limite de recurcion: %d \nAsegurece de que su Gramatica no contenga un bucle\n",RECURSION_LIMIT);
