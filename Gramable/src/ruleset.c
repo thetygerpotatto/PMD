@@ -31,3 +31,17 @@ bool isInrs(ruleset *rs, rule * r) {
     }
     return false;
 }
+
+void delete_rule(ruleset *rs, int index) {
+    if (rs == NULL || index < 0 || index >= rs->size) {
+        return;
+    }
+    
+    free(rs->rules[index].R.chars);
+    free(rs->rules[index].L.chars);
+    rs->size--;
+    
+    for (size_t i = index; i < rs->size; ++i) {
+        memcpy(&rs->rules[i], &rs->rules[i+1], sizeof(rule));
+    }
+}

@@ -7,6 +7,9 @@
 #include "utils/d_string.h"
 #include "utils/set.c"
 
+#define RECURSION_LIMIT 1000
+#define BRANCH_LIMIT 10000
+
 void menu();
 void getAlphabet();
 void getTermSyms();
@@ -16,6 +19,10 @@ void showGramatic();
 void checkFrase();
 void generateLanguage();
 void editingMenu();
+void editAlphabet();
+void editTerminalSymbols();
+void editInicialSymbol();
+void editRules();
 
 bool isInSetc(set *Set, const char *c);
 bool isComformedByVoc(set *Set, d_string *str);
@@ -32,6 +39,10 @@ static set Generated_language = {0};
 static ruleset Rules = {0};
 
 static d_string frase = {0};
+
+static bool recursion_limit_reached = false;
+static size_t branch_limit = 0;
+
 
 
 
@@ -52,7 +63,7 @@ void menu() {
         printf("4 - Para ingresar las reglas\n");
         printf("5 - Para probar una palabra\n");
         printf("6 - Para generar el lenguaje\n");
-        printf("7 - Para generar el lenguaje\n");
+        printf("7 - Menu de edicion\n");
         printf("0 - Para salir\n");
         printf("--");
         
@@ -89,8 +100,8 @@ void menu() {
 }
 
 void editingMenu() {
-    bool loop = false;
-    while (!loop) {
+    bool loop = true;
+    while (loop) {
         int op = -1;
         showGramatic();
         printf("\n      menu de edicion\n\n");
@@ -106,28 +117,19 @@ void editingMenu() {
 
         switch (op) {
             case 1:
-                getAlphabet();
+                editAlphabet();
             break;
             case 2:
-                getTermSyms();
+                editTerminalSymbols();
             break;
             case 3:
-                getInitialSym();
+                editInicialSymbol();
             break;
             case 4:
-                getRules();
-            break;
-            case 5:
-                checkFrase();
-            break;
-            case 6:
-                generateLanguage();
-            break;
-            case 7:
-                editingMenu();
+                editRules();
             break;
             case 0:
-                loop = true;
+                loop = false;
             break;
         }
     }
@@ -157,6 +159,7 @@ void checkFrase() {
     } else {
         printf("%s no es una frase de generada por G\n", frase.chars);
     }
+    getchar();
 }
 
 
@@ -171,13 +174,23 @@ void generateLanguage() {
     for (size_t i = 0; i < Generated_language.size; ++i) {
         printf("%lu - %s", i+1, Generated_language.symbols[i].chars);
         if (d_string_isIn_s(&Generated_language.symbols[i], "(")) {
-            printf(" Para cualquier S de P que no se contenga a si misma\n");
+
+            printf("--> el simbolo no terminal fuera de parentesis sera remplazado por cualquier regla que no lo contenga en su lado derecho\n");
         } else printf("\n");
+    }
+    if (recursion_limit_reached) {
+        recursion_limit_reached = false;
+        printf("El limite de rercurcion fue alcanzado - Limite de recurcion: %d \nAsegurece de que su Gramatica no contenga un bucle\n",RECURSION_LIMIT);
+    }
+    if (branch_limit == BRANCH_LIMIT) {
+
+        printf("El limite de generacion de ramas fue alcanzado - limite de genreacion de ramas: %d \nAsegurece de que su Gramatica no contenga un bucle\n",BRANCH_LIMIT);
     }
     getchar();
 }
 
 char * derive_frase(char * word, set *Language, size_t depth) {
+    branch_limit++;
     depth++;
     d_string starting_sym = {0};
     d_string temp = {0};
@@ -196,21 +209,26 @@ char * derive_frase(char * word, set *Language, size_t depth) {
                 d_string_insert_s(&temp, str_Index, Rules.rules[rule_Index].R.chars);
                 
                 d_string recursionRule = {0};
-                d_string_append_s(&recursionRule, lookForRecursion(&Rules.rules[rule_Index]));
+                char * dump = lookForRecursion(&Rules.rules[rule_Index]);
+                d_string_append_s(&recursionRule, dump);
+                if (dump != NULL) free(dump);
 
                 bool hasRecursion = (recursionRule.chars == NULL) ? false : true;
                 
-                if (!isOnlyTerminal(&Term_symbols, &temp) && depth && !hasRecursion) {
+                if (!isOnlyTerminal(&Term_symbols, &temp) &&
+                    depth < RECURSION_LIMIT &&
+                    !hasRecursion &&
+                    branch_limit < BRANCH_LIMIT) {
                     derive_frase(temp.chars, Language, depth);
                 } 
-                else if(depth > 1000) {
-                    printf("Limite de recursion alcanzado%lu\n", depth);
+                else if(depth >= RECURSION_LIMIT) {
+                    recursion_limit_reached = true;
                 }
                 else if(hasRecursion) {
                     set_append(&Generated_language, recursionRule.chars);
                 }
                 else {
-                    set_append(&Generated_language, temp.chars);
+                    if (isComformedByVoc(&Term_symbols, &temp)) set_append(&Generated_language, temp.chars);
                 }
             }
             
@@ -274,16 +292,72 @@ void getAlphabet() {
 
 void editAlphabet() {
     bool loop = true;
-    int index = -1;
-    while (!loop) {
+    int index = -2;
+    d_string deleted = {0};
+    while (loop) {
         printf("Vocabulario:\n");
         for (size_t i = 0; i != Alphabet.size; ++i) {
             printf("%lu - %s\n", i+1, Alphabet.symbols[i].chars);
         }
-        printf("Seleccione el indice del simbolo que desea editar: ");
+        printf("Seleccione el indice del simbolo que desea eliminar (0 para cancelar): ");
         scanf("%d", &index);
         getchar();
+        index--;
+        
+        if (index == -1) {
+            break;
+        }
 
+        if (index < 0 && index >= Alphabet.size ) {
+            printf("Ingrese indices dentro del rango\n");
+            continue;
+        }
+        d_string_set_s(&deleted, Alphabet.symbols[index].chars);
+        set_delete(&Alphabet, index);
+    }
+
+    set_delete(&Inicial_symbol, findInSet(&Inicial_symbol, &deleted));
+    set_delete(&Term_symbols, findInSet(&Term_symbols, &deleted));
+    
+    for (int i = 0; i < Rules.size; ++i) {
+        if (d_string_isIn_s(&Rules.rules[i].L, deleted.chars) || 
+            d_string_isIn_s(&Rules.rules[i].R, deleted.chars)) {
+            delete_rule(&Rules, i);
+        }
+    }
+}
+
+void editTerminalSymbols() {
+    bool loop = true;
+    int index = -2;
+    d_string deleted = {0};
+    while (loop) {
+        printf("Simbolos terminales:\n");
+        for (size_t i = 0; i != Term_symbols.size; ++i) {
+            printf("%lu - %s\n", i+1, Term_symbols.symbols[i].chars);
+        }
+        printf("Seleccione el indice del simbolo que desea eliminar (0 para cancelar): ");
+        scanf("%d", &index);
+        getchar();
+        index--;
+        
+        if (index == -1) {
+            break;
+        }
+
+        if (index < 0 && index >= Term_symbols.size ) {
+            printf("Ingrese indices dentro del rango\n");
+            continue;
+        }
+        d_string_set_s(&deleted, Term_symbols.symbols[index].chars);
+        set_delete(&Term_symbols, index);
+    }
+
+    for (int i = 0; i < Rules.size; ++i) {
+        if (d_string_isIn_s(&Rules.rules[i].L, deleted.chars) || 
+            d_string_isIn_s(&Rules.rules[i].R, deleted.chars)) {
+            delete_rule(&Rules, i);
+        }
     }
 }
 
@@ -316,8 +390,7 @@ void getTermSyms() {
 }
 
 void getInitialSym() {
-    if (Alphabet.symbols == NULL) return;
-    set_clear(&Inicial_symbol);
+    if (Alphabet.symbols == NULL || Inicial_symbol.size > 0) return;
     printf( "Ingrese el simbolo inicial:");
     while(true) {
         printf("- ");
@@ -344,6 +417,31 @@ void getInitialSym() {
         getchar();
         break;
     }
+}
+
+void editInicialSymbol() {
+    bool loop = true;
+    char index = 0;
+    d_string deleted = {0};
+    while (loop) {
+        printf("Simbolo inical:%s\n", Inicial_symbol.symbols->chars);
+        printf("Ingrese 0 para cancelar, cualquier otra tecla para continuar");
+        scanf("%c", &index);
+        getchar();
+        
+        if (index == '0') {
+            break;
+        }
+
+
+        set_delete(&Inicial_symbol, 0);
+        break;
+    }
+
+    if (index == '0') return;
+
+
+    getInitialSym();
 }
 
 void getRules() {
@@ -394,6 +492,32 @@ void getRules() {
         rule newrule = {.R = strR, .L = strL};
         add_rule(&Rules, newrule);
     }
+}
+
+void editRules() {
+    bool loop = true;
+    int index = -2;
+    while (loop) {
+        printf("Reglas de produccion\n");
+        for (size_t i = 0; i != Rules.size; ++i) {
+            printf("%lu - %s -> %s\n", i+1, Rules.rules[i].L.chars, Rules.rules[i].R.chars);
+        }
+        printf("Seleccione el indice de la regla que desea eliminar (0 para cancelar): ");
+        scanf("%d", &index);
+        getchar();
+        index--;
+        
+        if (index == -1) {
+            break;
+        }
+
+        if (index < 0 && index >= Rules.size ) {
+            printf("Ingrese indices dentro del rango\n");
+            continue;
+        }
+        delete_rule(&Rules, index);
+    }
+
 }
 
 void showGramatic() {

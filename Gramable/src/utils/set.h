@@ -24,5 +24,6 @@ void set_clear(set *Set);
 bool isInSet(set *Set, d_string *str);
 
 int findInSet(set *set, d_string *str);
+void set_delete(set *set, int index);
 
 #endif // !Set

@@ -17,6 +17,8 @@ typedef struct {
 
 void realloc_ruleset(ruleset *r);
 void add_rule(ruleset * rs, rule r);
+void delete_rule(ruleset *rs, int index);
 bool isInrs(ruleset *rs, rule * r);
+
 
 #endif // DEBUG

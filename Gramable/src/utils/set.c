@@ -15,7 +15,6 @@ void set_realloc(set *set) {
         d_string *syms = malloc(sizeof(d_string)*set->size);
         memcpy(syms, set->symbols, sizeof(d_string)*set->size);
 
-        printf("size: %lu", set->capacity);
         
         set->symbols = (d_string *)realloc(set->symbols, sizeof(d_string)*set->capacity);
 
@@ -66,4 +65,14 @@ int findInSet(set *set, d_string *str) {
         if(strcmp(set->symbols[i].chars, str->chars) == 0) return i;
     }
     return -1;
+}
+
+void set_delete(set *set, int index) {
+    if (set == NULL || index < 0 || set->size == 0 || (index >= set->size)) return;
+    
+    d_string_clear(&set->symbols[index]);
+    set->size--;
+    for (size_t i = index; i < set->size; ++i) {
+        memcpy(&set->symbols[i], &set->symbols[i+1], sizeof(d_string));
+    }
 }
