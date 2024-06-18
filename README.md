@@ -1,4 +1,4 @@
-## This projects contains both parts of my Discrete Mathemathics class
+## This projects contains both parts of a Discrete Mathemathics class project
 
 ### Gramable: this programs will allow you to define a:
 > Gramatic G 
